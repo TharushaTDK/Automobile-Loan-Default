@@ -163,7 +163,7 @@ if st.button("🚀 Predict Loan Status"):
     input_data = encode_input()
     prediction = model.predict(input_data)
 
-    if Loan_Annuity > Client_Income:
+    if Loan_Annuity >= Client_Income:
         st.markdown(
             "<div class='result-box' style='background-color:#FADBD8; color:#C0392B;'>❌ The client is predicted to DEFAULT on the loan (High annuity vs income).</div>",
             unsafe_allow_html=True,
