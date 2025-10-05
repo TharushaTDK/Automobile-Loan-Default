@@ -1,6 +1,8 @@
 import streamlit as st
 import numpy as np
 import joblib
+import requests
+import os
 from pathlib import Path
 
 # --- PAGE CONFIGURATION ---
@@ -54,21 +56,35 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- LOAD MODEL ---
-# Calculate path relative to this file (app.py)
-MODEL_PATH = Path(__file__).parent.parent / "models" / "rf_model_weighted.pkl"
+MODEL_PATH = Path(__file__).parent / "models" / "rf_model_weighted.pkl"
 
 
 @st.cache_resource
 def load_model():
+    """Load model from local path or download if missing."""
+    if not MODEL_PATH.exists():
+        os.makedirs(MODEL_PATH.parent, exist_ok=True)
+        url = "YOUR_MODEL_DOWNLOAD_LINK"  # Replace with your real URL
+        st.warning("Downloading model from remote source...")
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(MODEL_PATH, "wb") as f:
+                for chunk in r.iter_content(8192):
+                    f.write(chunk)
     return joblib.load(MODEL_PATH)
 
 
-model = load_model()
+try:
+    model = load_model()
+    st.success("Model loaded successfully ✅")
+except Exception as e:
+    st.error(f"Error loading model: {e}")
+    st.stop()
 
 # --- TITLE ---
 st.markdown("<h1 class='title'>🚗 Automobile Loan Default Prediction</h1>",
             unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Predict whether a client is likely to default on a loan using trained ML models.</p>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Predict whether a client is likely to default on a loan using a trained ML model.</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- INPUT FORM ---
@@ -117,49 +133,41 @@ with col5:
 
 
 def encode_client_education(education):
-    education_mapping = {
+    mapping = {
         'Graduation': 0,
         'Graduation dropout': 1,
         'Junior secondary': 2,
         'Post Grad': 3,
         'Secondary': 4
     }
-    return education_mapping.get(education, -1)
+    return mapping.get(education, 0)
 
 
 def encode_input():
     education_encoded = encode_client_education(Client_Education)
 
-    income_type_encoded = [
-        1 if Client_Income_Type == "Commercial" else 0,
-        1 if Client_Income_Type == "Govt Job" else 0,
-        1 if Client_Income_Type == "Maternity leave" else 0,
-        1 if Client_Income_Type == "Retired" else 0,
-        1 if Client_Income_Type == "Service" else 0,
-        1 if Client_Income_Type == "Student" else 0,
-    ]
+    # One-hot encode categorical fields in consistent order
+    income_type_order = ['Commercial', 'Govt Job',
+                         'Maternity leave', 'Retired', 'Service', 'Student']
+    income_type_encoded = [1 if Client_Income_Type ==
+                           i else 0 for i in income_type_order]
 
+    marital_status_order = ['D', 'M', 'S', 'W']
     marital_status_encoded = [
-        1 if Client_Marital_Status == "D" else 0,
-        1 if Client_Marital_Status == "M" else 0,
-        1 if Client_Marital_Status == "S" else 0,
-        1 if Client_Marital_Status == "W" else 0,
-    ]
+        1 if Client_Marital_Status == i else 0 for i in marital_status_order]
 
-    gender_encoded = [
-        1 if Client_Gender == "Female" else 0,
-        1 if Client_Gender == "Male" else 0,
-    ]
+    gender_order = ['Female', 'Male']
+    gender_encoded = [1 if Client_Gender == g else 0 for g in gender_order]
 
-    loan_contract_encoded = [
-        1 if Loan_Contract_Type == "CL" else 0,
-        1 if Loan_Contract_Type == "RL" else 0,
-    ]
+    loan_contract_order = ['CL', 'RL']
+    loan_contract_encoded = [1 if Loan_Contract_Type ==
+                             l else 0 for l in loan_contract_order]
 
+    # Combine all features
     input_features = [
-        Client_Income, Car_Owned, Bike_Owned, Active_Loan, House_Own, Child_Count,
-        Credit_Amount, Loan_Annuity, Workphone_Working, Client_Family_Members,
-        Age_Years, Employed_Years, education_encoded
+        Client_Income, Car_Owned, Bike_Owned, Active_Loan, House_Own,
+        Child_Count, Credit_Amount, Loan_Annuity, Workphone_Working,
+        Client_Family_Members, Age_Years, Employed_Years, education_encoded
     ] + income_type_encoded + marital_status_encoded + gender_encoded + loan_contract_encoded
 
     return np.array(input_features).reshape(1, -1)
@@ -171,7 +179,13 @@ st.subheader("🔍 Prediction Result")
 
 if st.button("🚀 Predict Loan Status"):
     input_data = encode_input()
-    prediction = model.predict(input_data)
+
+    try:
+        prediction = model.predict(input_data)
+        pred_class = int(prediction[0])
+    except Exception as e:
+        st.error(f"Prediction failed: {e}")
+        st.stop()
 
     if Loan_Annuity >= Client_Income:
         st.markdown(
@@ -179,7 +193,7 @@ if st.button("🚀 Predict Loan Status"):
             unsafe_allow_html=True,
         )
     else:
-        if prediction[0] == 0:
+        if pred_class == 0:
             st.markdown(
                 "<div class='result-box' style='background-color:#D5F5E3; color:#117A65;'>✅ The client is predicted to NOT default on the loan.</div>",
                 unsafe_allow_html=True,
@@ -192,5 +206,7 @@ if st.button("🚀 Predict Loan Status"):
 
 # --- FOOTER ---
 st.markdown("---")
-st.markdown("<p style='text-align:center; color:gray;'>Made with ❤️ by <b>Cluster Crew (FDM_MLB_G12)</b></p>",
-            unsafe_allow_html=True)
+st.markdown(
+    "<p style='text-align:center; color:gray;'>Made with ❤️ by <b>Cluster Crew (FDM_MLB_G12)</b></p>",
+    unsafe_allow_html=True
+)
