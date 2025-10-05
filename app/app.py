@@ -61,19 +61,17 @@ MODEL_PATH = Path(__file__).parent.parent / "model" / "rf_model_weighted.pkl"
 
 @st.cache_resource
 def load_model():
-    """Load model from local path or download if missing."""
+    """Load model from local path. Show error if missing."""
     if not MODEL_PATH.exists():
-        os.makedirs(MODEL_PATH.parent, exist_ok=True)
-        url = "YOUR_MODEL_DOWNLOAD_LINK"  # Replace with your real URL
-        st.warning("Downloading model from remote source...")
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(MODEL_PATH, "wb") as f:
-                for chunk in r.iter_content(8192):
-                    f.write(chunk)
+        st.error(
+            f"Model file not found at {MODEL_PATH}.\n"
+            "Please make sure 'rf_model_weighted.pkl' is in the 'model' folder."
+        )
+        st.stop()  # Stop the app if model is missing
     return joblib.load(MODEL_PATH)
 
 
+# Load model
 try:
     model = load_model()
     st.success("Model loaded successfully ✅")
