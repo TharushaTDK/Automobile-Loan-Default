@@ -74,7 +74,6 @@ def load_model():
 # Load model
 try:
     model = load_model()
-    st.success("Model loaded successfully ✅")
 except Exception as e:
     st.error(f"Error loading model: {e}")
     st.stop()
