@@ -56,7 +56,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- LOAD MODEL ---
-MODEL_PATH = Path(__file__).parent.parent / "model" / "rf_model_weighted.pkl"
+MODEL_PATH = Path(__file__).parent.parent / "models" / "rf_model_weighted.pkl"
 
 
 @st.cache_resource
