@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import joblib
+from pathlib import Path
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -53,7 +54,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- LOAD MODEL ---
-model = joblib.load('models/rf_model_weighted.pkl')
+# Calculate path relative to this file (app.py)
+MODEL_PATH = Path(__file__).parent.parent / "models" / "rf_model_weighted.pkl"
+
+
+@st.cache_resource
+def load_model():
+    return joblib.load(MODEL_PATH)
+
+
+model = load_model()
 
 # --- TITLE ---
 st.markdown("<h1 class='title'>🚗 Automobile Loan Default Prediction</h1>",
